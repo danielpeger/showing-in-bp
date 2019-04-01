@@ -10,8 +10,11 @@
   "dependencies": {
     "axios": "^0.18.0",
     "gatsby": "^2.0.0",
+    "iconv": "^2.3.4",
     "react": "^16.5.1",
-    "react-dom": "^16.5.1"
+    "react-dom": "^16.5.1",
+    "request": "^2.88.0",
+    "utf8": "^3.0.0"
   },
   "version": "1.0.0",
   "main": "index.js",
