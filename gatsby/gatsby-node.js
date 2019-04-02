@@ -1,9 +1,5 @@
 const puppeteer = require('puppeteer');
 
-function noescape (string) {
-	return string
-}
-
 (async () => {
   const browser = await puppeteer.launch();
   const listPage = await browser.newPage();
