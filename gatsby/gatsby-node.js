@@ -1,44 +1,36 @@
-var Xray = require('x-ray');
-var x = Xray();
+const puppeteer = require('puppeteer');
 
-var options = {};
-var conv = null;
-options.encoding = 'binary';
-iconv = new require('iconv').Iconv('ISO-8859-2', 'UTF-8');
-conv = function(body) {
-    if (!body) return body;
-    body = new Buffer.from(body, 'binary');
-    return iconv.convert(body).toString();
+function noescape (string) {
+	return string
 }
 
-var request = require('request').defaults(options);
-var driver = function driver(context, callback) {
-    var url = context.url;
-    request(url, function(err, response, body) {
-        if (!err && conv) body = conv(body);
-        return callback(err, body);
-    })
-};
-x.driver(driver);
+(async () => {
+  const browser = await puppeteer.launch();
+  const listPage = await browser.newPage();
 
-x('http://est.hu/mozi/filmek_a_heten/#varos=298', '.talalat_program .egyseg', [{
-	hungarianTitle: ' > a',
-  titleAndYear: 'small'
-}])
-  .then(function (res) {
-		res.map(result => {
-			if (result.titleAndYear.includes(',')) {
-				result.title = result.titleAndYear.substring(1, result.titleAndYear.indexOf(','));
+  await listPage.goto('http://est.hu/mozi/filmek_a_heten/#varos=298');
+
+  const result = await listPage.evaluate(() => {
+		let res = [];
+		const egyseg = document.querySelectorAll('.egyseg');
+		for (let i = 0; i < egyseg.length; i++) {
+			let film = {};
+			let titleAndYear = egyseg[i].querySelector('small').textContent;
+			film.hungarianTitle = egyseg[i].querySelector('a').textContent;
+			if (titleAndYear.includes(',')) {
+				film.title = titleAndYear.substring(1, titleAndYear.indexOf(','));
 			} else {
-				result.title = result.hungarianTitle;
+				film.title = film.hungarianTitle;
 			};
-			delete result.titleAndYear;
-		})
-    console.log(res)
-  })
-  .catch(function (err) {
-    console.log(err) // handle error in promise
-  })
+			res.push(film);
+		}
+		return res;
+  });
+
+	console.log(result);
+
+  browser.close();
+})();
 
 const movies = [
   {
