@@ -25,24 +25,25 @@ async function getData() {
       }
       let estUrl = link.getAttribute("href");
       film.estId = estUrl.substring(estUrl.indexOf("=") + 1, estUrl.length);
-
-			const tmdbApiKey = '4b16b5a9a0f5ff8dcbe7170c12fca839';
-			const tmdbUrl = 'https://api.themoviedb.org/3/search/movie?api_key='+tmdbApiKey+'&language=en-US&query='+film.title+'&year='+film.year;
-			axios.get(tmdbUrl)
-			  .then(function (response) {
-					film.desription = response.results[0].overview;
-			  })
-			  .catch(function (error) {
-			    // handle error
-			    console.log(error);
-			  });
-
       res.push(film);
     }
     return res;
   });
 
-  for (let i = 0; i < listResult.length; i++) {
+	const tmdbApiKey = '4b16b5a9a0f5ff8dcbe7170c12fca839';
+	for (let i = 0; i < 3; i++) {
+		const tmdbUrl = 'https://api.themoviedb.org/3/search/movie?api_key='+tmdbApiKey+'&language=en-US&query='+ encodeURI(listResult[i].title);
+		await axios.get(tmdbUrl)
+			.then(function (response) {
+				listResult[i].description = response.results;
+			})
+			.catch(function (error) {
+				// handle error
+				console.log(error);
+			});
+	}
+
+  for (let i = 0; i < 3; i++) {
     const film = listResult[i];
     const filmpage = await browser.newPage();
 		const d = new Date();
@@ -97,7 +98,7 @@ async function getData() {
     film.screenings = screeningResult;
   }
 
-	console.log(JSON.stringify(listResult, null, 2));
+	console.log(JSON.stringify(listResult[1], null, 2));
 
   browser.close();
 
