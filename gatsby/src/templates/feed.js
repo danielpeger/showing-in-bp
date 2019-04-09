@@ -1,15 +1,15 @@
 import React from "react";
 import { Link } from "gatsby";
 
-export default ({ pageContext: { movies } }) => (
+export default ({ pageContext: { films } }) => (
   <ol>
-    {movies.map(movie => (
+    {films.map(film => (
       <li>
-        <Link to={`/movie/${movie.title}`}>{movie.title}</Link>
-        <div>{movie.description}</div>
-        <div>Imdb: {movie.imdbRating}</div>
-        <div>Metacritic: {movie.metaScore}</div>
-        <div>Rotten Tomatoes: {movie.tomatoMeter}</div>
+        <Link to={`/film/${film.title}`}>{film.title}</Link>
+        <div>{film.description}</div>
+        <div>Imdb: {film.imdbRating}</div>
+        <div>Metacritic: {film.metaScore}</div>
+        <div>Rotten Tomatoes: {film.tomatoMeter}</div>
       </li>
     ))}
   </ol>
