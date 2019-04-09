@@ -1,5 +1,6 @@
 const puppeteer = require("puppeteer");
 const axios = require("axios");
+const fs = require("fs");
 
 async function getData() {
   const browser = await puppeteer.launch();
@@ -15,43 +16,119 @@ async function getData() {
       let link = egyseg[i].querySelector(":scope > a");
       film.hungarianTitle = link.textContent;
       if (titleAndYear.includes(",")) {
-        film.title = titleAndYear.substring(1, titleAndYear.indexOf(","));
-				const year = titleAndYear.substring(titleAndYear.indexOf(",")+2, titleAndYear.length-1);
-				film.year = parseInt(year);
+        const comma = titleAndYear.lastIndexOf(",");
+        film.title = titleAndYear.substring(1, comma);
+        const year = titleAndYear.substring(comma + 2, titleAndYear.length - 1);
+        film.year = parseInt(year);
       } else {
         film.title = film.hungarianTitle;
-				const year = titleAndYear.substring(1, titleAndYear.length-1);
-				film.year = parseInt(year);
+        const year = titleAndYear.substring(1, titleAndYear.length - 1);
+        film.year = parseInt(year);
       }
       let estUrl = link.getAttribute("href");
       film.estId = estUrl.substring(estUrl.indexOf("=") + 1, estUrl.length);
-      res.push(film);
+      if (!film.title.endsWith("3D")) {
+        res.push(film);
+      }
     }
     return res;
   });
 
-	const tmdbApiKey = '4b16b5a9a0f5ff8dcbe7170c12fca839';
-	for (let i = 0; i < 3; i++) {
-		const tmdbUrl = 'https://api.themoviedb.org/3/search/movie?api_key='+tmdbApiKey+'&language=en-US&query='+ encodeURI(listResult[i].title);
-		await axios.get(tmdbUrl)
-			.then(function (response) {
-				listResult[i].description = response.results;
-			})
-			.catch(function (error) {
-				// handle error
-				console.log(error);
-			});
-	}
-
-  for (let i = 0; i < 3; i++) {
+	//Get more data about each film
+  const tmdbApiKey = "4b16b5a9a0f5ff8dcbe7170c12fca839";
+  for (let i = 0; i < listResult.length; i++) {
     const film = listResult[i];
+
+    //Search tmdb
+    if (film.title) {
+      const tmdbSearchUrl =
+        "https://api.themoviedb.org/3/search/movie?api_key=" +
+        tmdbApiKey +
+        "&language=en-US&query=" +
+        encodeURI(film.title) +
+        "&year=" +
+        film.year;
+      const tmdbImageUrl = "https://image.tmdb.org/t/p/w500";
+
+      await axios
+        .get(tmdbSearchUrl)
+        .then(function(searchResponse) {
+          const tmdbResult = searchResponse.data.results[0];
+          if (tmdbResult) {
+            film.description = tmdbResult.overview;
+            film.image = tmdbImageUrl + tmdbResult.poster_path;
+            film.tmdbId = tmdbResult.id;
+          }
+          console.log("Got tmdb search response for " + film.title);
+        })
+        .catch(function(error) {
+          console.log(error);
+        });
+    }
+
+    //Get detailed tmdb data
+    if (film.tmdbId) {
+      const tmdbMovieUrl =
+        "https://api.themoviedb.org/3/movie/" +
+        film.tmdbId +
+        "?api_key=" +
+        tmdbApiKey +
+        "&append_to_response=release_dates,credits";
+      await axios
+        .get(tmdbMovieUrl)
+        .then(function(movieResponse) {
+          const tmdbDetails = movieResponse.data;
+          film.runtime = tmdbDetails.runtime;
+          film.imdbId = tmdbDetails.imdb_id;
+          film.genres = tmdbDetails.genres.map(genre => {
+            return genre.name;
+          });
+          const directorObject = tmdbDetails.credits.crew.find(function(
+            credit
+          ) {
+            return credit.job == "Director";
+          });
+          film.director = directorObject.name;
+          console.log("Got tmdb movie details response for " + film.title);
+        })
+        .catch(function(error) {
+          console.log(error);
+        });
+    }
+
+    //Get imdb data
+    if (film.imdbId) {
+      const omdbUrl =
+        "http://www.omdbapi.com/?apikey=6b2763ed&i=" + film.imdbId;
+      await axios
+        .get(omdbUrl)
+        .then(function(omdbResponse) {
+          film.imdbRating = parseFloat(omdbResponse.data.imdbRating);
+          film.imdbVotes = parseInt(
+            omdbResponse.data.imdbVotes.replace(/,/g, "")
+          );
+          film.metascore = parseInt(omdbResponse.data.Metascore);
+          film.description = omdbResponse.data.Plot;
+          film.writer = omdbResponse.data.Writer;
+          console.log("Got omdb response for " + film.title);
+        })
+        .catch(function(error) {
+          console.log(error);
+        });
+    }
+
+    //Get screenings
     const filmpage = await browser.newPage();
-		const d = new Date();
-		var options = { year: 'numeric', month: '2-digit', day: '2-digit' };
-		const todayString = d.toLocaleDateString('hu-HU', options).replace(new RegExp('-', 'g'),'.');
+    const d = new Date();
+    var options = { year: "numeric", month: "2-digit", day: "2-digit" };
+    const todayString = d
+      .toLocaleDateString("hu-HU", options)
+      .replace(new RegExp("-", "g"), ".");
     await filmpage.goto(
-      'http://est.hu/mozi/filmek_a_heten/#filmkereso/film='
-			+ film.estId + '/varos=298/dt=' + todayString
+      "http://est.hu/mozi/filmek_a_heten/#filmkereso/film=" +
+        film.estId +
+        "/varos=298/dt=" +
+        todayString
     );
     const screeningResult = await filmpage.evaluate(() => {
       let res = [];
@@ -59,70 +136,90 @@ async function getData() {
       for (let i = 0; i < row.length; i++) {
         let screening = {};
         screening.location = row[i].querySelector(".fo_cella a").textContent;
-				const cells = row[i].querySelectorAll("td > div");
-				screening.events = [];
-				for (var j = 0; j < cells.length; j++) {
-					let event = {};
-					let cellText = cells[j].textContent;
+        const cells = row[i].querySelectorAll("td > div");
+        screening.showtimes = [];
+        for (var j = 0; j < cells.length; j++) {
+          let showtime = {};
+          let cellText = cells[j].textContent;
 
-					let hours = cellText.substring(0, cellText.indexOf(':'));
-					let minutes = cellText.substring(cellText.indexOf(':')+1, cellText.indexOf('('));
-					let eventDate = new Date();
-					eventDate.setHours(hours);
-					eventDate.setMinutes(minutes);
-					event.time = eventDate.toISOString();
+          let hours = cellText.substring(0, cellText.indexOf(":"));
+          let minutes = cellText.substring(
+            cellText.indexOf(":") + 1,
+            cellText.indexOf("(")
+          );
+          let showtimeDate = new Date();
+          showtimeDate.setHours(hours);
+          showtimeDate.setMinutes(minutes);
+          showtime.time = showtimeDate.toISOString();
 
-					let dubString = cellText.substring(cellText.indexOf('(')+1, cellText.length-1)
-					if (dubString = 'mb') {
-						event.dubbed = true;
-						event.subtitled = false;
-						event.subtitleLanguage = false;
-					} else if (dubString = 'f') {
-						event.dubbed = false;
-						event.subtitled = true;
-						event.subtitleLanguage = 'hungarian';
-					} else if (dubString = 'ensub') {
-						event.dubbed = false;
-						event.subtitled = true;
-						event.subtitleLanguage = 'english';
-					} else {
-						event.dubbed = dubString;
-					}
+          let dubString = cellText.substring(
+            cellText.indexOf("(") + 1,
+            cellText.length - 1
+          );
+          if ((dubString = "mb")) {
+            showtime.dubbed = true;
+            showtime.subtitled = false;
+          } else if ((dubString = "f")) {
+            showtime.dubbed = false;
+            showtime.subtitled = true;
+            showtime.subtitleLanguage = "hungarian";
+          } else if ((dubString = "ensub")) {
+            showtime.dubbed = false;
+            showtime.subtitled = true;
+            showtime.subtitleLanguage = "english";
+          } else {
+            showtime.dubbed = dubString;
+          }
 
-					screening.events.push(event);
-				}
+          screening.showtimes.push(showtime);
+        }
         res.push(screening);
       }
       return res;
     });
-    film.screenings = screeningResult;
-  }
 
-	console.log(JSON.stringify(listResult[1], null, 2));
+    if (screeningResult) {
+      film.screenings = screeningResult;
+      console.log("Got screenings for " + film.title);
+    }
+  }
 
   browser.close();
 
-  return listResult;
+	// Sort by imdb rating
+	const filmsSorted = listResult.sort(function (a, b) {
+		return a.imdbRating - b.imdbRating;
+	});
+
+  fs.writeFile("data.json", JSON.stringify(filmsSorted), "utf8", function(err) {
+    if (err) {
+      console.log("An error occured while writing JSON Object to File.");
+      return console.log(err);
+    }
+    console.log("JSON file has been saved.");
+  });
+
+  return filmsSorted;
 }
 
 getData();
 
 exports.createPages = async ({ actions: { createPage } }) => {
-  const movies = await getData();
+  const films = await getData();
   createPage({
     path: `/`,
     component: require.resolve("./src/templates/feed.js"),
     context: {
-      movies
+      films
     }
   });
   {
-    movies.map(movie =>
+    films.map(film =>
       createPage({
-        path: `/movie/${movie.title}/`,
-        component: require.resolve("./src/templates/movie.js"),
+        path: `/film/${film.title}/`,
+        component: require.resolve("./src/templates/film.js"),
         context: {
-          movie
+          film
         }
       })
     );

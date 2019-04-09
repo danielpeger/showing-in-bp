@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "axios": "^0.18.0",
+    "fs": "0.0.1-security",
     "gatsby": "^2.0.0",
     "iconv": "^2.3.4",
     "puppeteer": "^1.14.0",
