@@ -1,6 +1,7 @@
 const puppeteer = require("puppeteer");
 const axios = require("axios");
 const fs = require("fs");
+const MinutesToDuration = require("./utils.js").MinutesToDuration;
 
 async function getData() {
   const browser = await puppeteer.launch();
@@ -18,15 +19,25 @@ async function getData() {
       if (titleAndYear.includes(",")) {
         const comma = titleAndYear.lastIndexOf(",");
         film.title = titleAndYear.substring(1, comma);
-        const year = titleAndYear.substring(comma + 2, titleAndYear.length - 1);
-        film.year = parseInt(year);
+        const year = parseInt(
+          titleAndYear.substring(comma + 2, titleAndYear.length - 1)
+        );
+        const yearDate = new Date(year, 0, 1);
+        film.year = yearDate.toISOString();
       } else {
         film.title = film.hungarianTitle;
-        const year = titleAndYear.substring(1, titleAndYear.length - 1);
-        film.year = parseInt(year);
+        const year = parseInt(
+          titleAndYear.substring(1, titleAndYear.length - 1)
+        );
+        const yearDate = new Date(year, 0, 1);
+        film.year = yearDate.toISOString();
       }
-      let estUrl = link.getAttribute("href");
-      film.estId = estUrl.substring(estUrl.indexOf("=") + 1, estUrl.length);
+      const estUrl = link.getAttribute("href");
+      const estIdString = estUrl.substring(
+        estUrl.indexOf("=") + 1,
+        estUrl.length
+      );
+      film.estId = parseInt(estIdString);
       if (!film.title.endsWith("3D")) {
         res.push(film);
       }
@@ -34,9 +45,9 @@ async function getData() {
     return res;
   });
 
-	//Get more data about each film
+  //Get more data about each film
   const tmdbApiKey = "4b16b5a9a0f5ff8dcbe7170c12fca839";
-  for (let i = 0; i < listResult.length; i++) {
+  for (let i = 0; i < 3; i++) {
     const film = listResult[i];
 
     //Search tmdb
@@ -78,7 +89,7 @@ async function getData() {
         .get(tmdbMovieUrl)
         .then(function(movieResponse) {
           const tmdbDetails = movieResponse.data;
-          film.runtime = tmdbDetails.runtime;
+          film.runtime = MinutesToDuration(tmdbDetails.runtime);
           film.imdbId = tmdbDetails.imdb_id;
           film.genres = tmdbDetails.genres.map(genre => {
             return genre.name;
@@ -88,7 +99,18 @@ async function getData() {
           ) {
             return credit.job == "Director";
           });
-          film.director = directorObject.name;
+          if (directorObject) {
+            film.director = directorObject.name;
+          }
+					//TODO: fix relese dates, get hungarian release dat properly
+          const releaseDateObject = tmdbDetails.release_dates.results.find(
+            function(releaseDate) {
+              return releaseDate.iso_3166_1 == "HU";
+            }
+          );
+          if (releaseDateObject) {
+            film.releaseDate = releaseDateObject.release_dates[0].release_date;
+          }
           console.log("Got tmdb movie details response for " + film.title);
         })
         .catch(function(error) {
@@ -186,10 +208,10 @@ async function getData() {
 
   browser.close();
 
-	// Sort by imdb rating
-	const filmsSorted = listResult.sort(function (a, b) {
-		return a.imdbRating - b.imdbRating;
-	});
+  // Sort by imdb rating
+  const filmsSorted = listResult.sort(function(a, b) {
+    return a.imdbRating - b.imdbRating;
+  });
 
   fs.writeFile("data.json", JSON.stringify(filmsSorted), "utf8", function(err) {
     if (err) {
