@@ -49,7 +49,7 @@ async function getData() {
 	});
 
 	//Get more data about each film
-	for (let i = 0; i < listResult-length; i++) {
+	for (let i = 0; i < listResult.length; i++) {
 		const film = listResult[i];
 
 		//Search tmdb
