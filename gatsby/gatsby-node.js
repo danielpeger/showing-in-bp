@@ -134,7 +134,7 @@ async function getData() {
 						return releaseDate.iso_3166_1 === 'HU';
 					});
 					if (hunReleaseDateObject) {
-						film.hungarianReleaseDate = releaseDateObject.release_dates[0].release_date;
+						film.hungarianReleaseDate = hunReleaseDateObject.release_dates[0].release_date;
 					}
 					console.log('Got tmdb movie details response for ' + film.title);
 				})
