@@ -51,32 +51,50 @@ async function getData() {
     const film = listResult[i];
 
     //Search tmdb
-    if (film.title) {
+    if (film.title && film.hungarianTitle) {
 		const year = new Date(film.releaseDate).getFullYear();
-      const tmdbSearchUrl =
-        "https://api.themoviedb.org/3/search/movie?api_key=" +
-        tmdbApiKey +
-        "&language=en-US&query=" +
-        encodeURI(film.title) +
-        "&year=" +
-        year;
-		console.log(tmdbSearchUrl);
       const tmdbImageUrl = "https://image.tmdb.org/t/p/w500";
+	  const ogTitleSearchUrl =
+		"https://api.themoviedb.org/3/search/movie?api_key=" +
+		tmdbApiKey +
+		"&query=" +
+		encodeURI(film.title);
+	  const hunTitleSearchUrl =
+		"https://api.themoviedb.org/3/search/movie?api_key=" +
+		tmdbApiKey +
+		"&query=" +
+		encodeURI(film.hungarianTitle);
+	  let ogIdResults = [];
+	  let hunIdResults = [];
 
       await axios
-        .get(tmdbSearchUrl)
+        .get(ogTitleSearchUrl)
         .then(function(searchResponse) {
-          const tmdbResult = searchResponse.data.results[0];
-          if (tmdbResult) {
-            film.description = tmdbResult.overview;
-            film.image = tmdbImageUrl + tmdbResult.poster_path;
-            film.tmdbId = tmdbResult.id;
-          }
-          console.log("Got tmdb search response for " + film.title);
+          const results = searchResponse.data.results;
+		  ogIdResults = results.map(result => {
+            return result.id;
+          });
         })
         .catch(function(error) {
           console.log(error);
         });
+
+		await axios
+		  .get(hunTitleSearchUrl)
+		  .then(function(searchResponse) {
+			const results = searchResponse.data.results;
+		  hunIdResults = results.map(result => {
+			  return result.id;
+			});
+		  })
+		  .catch(function(error) {
+			console.log(error);
+		  });
+
+		const matches = ogIdResults.filter(value => hunIdResults.includes(value));
+		if (mathes.length == 1) {
+			film.tmdbId = mathes[0];
+		}
     }
 
     //Get detailed tmdb data
@@ -91,6 +109,8 @@ async function getData() {
         .get(tmdbMovieUrl)
         .then(function(movieResponse) {
           const tmdbDetails = movieResponse.data;
+		  film.description = tmdbDetails.overview;
+		  film.image = tmdbImageUrl + tmdbDetails.poster_path;
           film.runtime = MinutesToDuration(tmdbDetails.runtime);
           film.imdbId = tmdbDetails.imdb_id;
           film.genres = tmdbDetails.genres.map(genre => {
