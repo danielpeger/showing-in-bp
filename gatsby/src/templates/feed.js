@@ -8,7 +8,7 @@ export default ({ pageContext: { films } }) => (
 				<Link to={`/film/${film.title}`}>{film.title}</Link>
 				<div>{film.description}</div>
 				<div>Imdb: {film.imdbRating}</div>
-				<div>Metacritic: {film.metaScore}</div>
+				<div>Metacritic: {film.metascore}</div>
 				<div>Rotten Tomatoes: {film.tomatoMeter}</div>
 			</li>
 		))}

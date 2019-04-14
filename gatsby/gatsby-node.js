@@ -130,11 +130,14 @@ async function getData() {
 					if (directorObject) {
 						film.director = directorObject.name;
 					}
-					const hunReleaseDateObject  = tmdbDetails.release_dates.results.find(function(releaseDate) {
-						return releaseDate.iso_3166_1 === 'HU';
-					});
+					const hunReleaseDateObject = tmdbDetails.release_dates.results.find(
+						function(releaseDate) {
+							return releaseDate.iso_3166_1 === 'HU';
+						}
+					);
 					if (hunReleaseDateObject) {
-						film.hungarianReleaseDate = hunReleaseDateObject.release_dates[0].release_date;
+						film.hungarianReleaseDate =
+							hunReleaseDateObject.release_dates[0].release_date;
 					}
 					console.log('Got tmdb movie details response for ' + film.title);
 				})
@@ -150,11 +153,12 @@ async function getData() {
 			await axios
 				.get(omdbUrl)
 				.then(function(omdbResponse) {
-					film.imdbRating = parseFloat(omdbResponse.data.imdbRating);
+					film.imdbRating = parseFloat(omdbResponse.data.imdbRating) / 10;
 					film.imdbVotes = parseInt(
 						omdbResponse.data.imdbVotes.replace(/,/g, '')
 					);
-					film.metascore = parseInt(omdbResponse.data.Metascore);
+					film.metascore = parseInt(omdbResponse.data.Metascore) / 100;
+					film.aggregatedRating = (film.imdbRating + film.metascore) / 2;
 					film.description = omdbResponse.data.Plot;
 					film.writer = omdbResponse.data.Writer;
 					console.log('Got omdb response for ' + film.title);
@@ -197,21 +201,21 @@ async function getData() {
 					let showtimeDate = new Date();
 					showtimeDate.setHours(hours);
 					showtimeDate.setMinutes(minutes);
-					showtimeDate.setSeconds(0,0);
+					showtimeDate.setSeconds(0, 0);
 					showtime.time = showtimeDate.toISOString();
 
 					let dubString = cellText.substring(
 						cellText.indexOf('(') + 1,
 						cellText.length - 1
 					);
-					if ((dubString === 'mb')) {
+					if (dubString === 'mb') {
 						showtime.dubbed = true;
 						showtime.subtitled = false;
-					} else if ((dubString === 'f')) {
+					} else if (dubString === 'f') {
 						showtime.dubbed = false;
 						showtime.subtitled = true;
 						showtime.subtitleLanguage = 'hungarian';
-					} else if ((dubString === 'ensub')) {
+					} else if (dubString === 'ensub') {
 						showtime.dubbed = false;
 						showtime.subtitled = true;
 						showtime.subtitleLanguage = 'english';
@@ -234,9 +238,13 @@ async function getData() {
 
 	browser.close();
 
-	// Sort by imdb rating
+	// Sort by rating
 	const filmsSorted = listResult.sort(function(a, b) {
-		return a.imdbRating - b.imdbRating;
+		return (
+			(a.aggregatedRating === null) - (b.aggregatedRating === null) ||
+			-(a.aggregatedRating > b.aggregatedRating) ||
+			+(a.aggregatedRating < b.aggregatedRating)
+		);
 	});
 
 	fs.writeFile('data.json', JSON.stringify(filmsSorted), 'utf8', function(err) {
