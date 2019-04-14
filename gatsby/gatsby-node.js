@@ -23,14 +23,14 @@ async function getData() {
           titleAndYear.substring(comma + 2, titleAndYear.length - 1)
         );
         const yearDate = new Date(year, 0, 1);
-        film.year = yearDate.toISOString();
+        film.releaseDate = yearDate.toISOString();
       } else {
         film.title = film.hungarianTitle;
         const year = parseInt(
           titleAndYear.substring(1, titleAndYear.length - 1)
         );
         const yearDate = new Date(year, 0, 1);
-        film.year = yearDate.toISOString();
+        film.releaseDate = yearDate.toISOString();
       }
       const estUrl = link.getAttribute("href");
       const estIdString = estUrl.substring(
@@ -52,13 +52,15 @@ async function getData() {
 
     //Search tmdb
     if (film.title) {
+		const year = new Date(film.releaseDate).getFullYear();
       const tmdbSearchUrl =
         "https://api.themoviedb.org/3/search/movie?api_key=" +
         tmdbApiKey +
         "&language=en-US&query=" +
         encodeURI(film.title) +
         "&year=" +
-        film.year;
+        year;
+		console.log(tmdbSearchUrl);
       const tmdbImageUrl = "https://image.tmdb.org/t/p/w500";
 
       await axios
@@ -102,7 +104,7 @@ async function getData() {
           if (directorObject) {
             film.director = directorObject.name;
           }
-					//TODO: fix relese dates, get hungarian release dat properly
+					//TODO: fix relese dates, get hungarian release date properly
           const releaseDateObject = tmdbDetails.release_dates.results.find(
             function(releaseDate) {
               return releaseDate.iso_3166_1 == "HU";
@@ -146,12 +148,12 @@ async function getData() {
     const todayString = d
       .toLocaleDateString("hu-HU", options)
       .replace(new RegExp("-", "g"), ".");
-    await filmpage.goto(
-      "http://est.hu/mozi/filmek_a_heten/#filmkereso/film=" +
-        film.estId +
-        "/varos=298/dt=" +
-        todayString
-    );
+	const screeningUrl = "http://est.hu/mozi/filmek_a_heten/#filmkereso/film=" +
+	  film.estId +
+	  "/varos=298/dt=" +
+	  todayString;
+	console.log(screeningUrl);
+    await filmpage.goto(screeningUrl);
     const screeningResult = await filmpage.evaluate(() => {
       let res = [];
       const row = document.querySelectorAll("tr[class]");
