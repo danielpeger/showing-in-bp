@@ -3,6 +3,9 @@ const axios = require('axios');
 const fs = require('fs');
 const MinutesToDuration = require('./utils.js').MinutesToDuration;
 
+const tmdbApiKey = '4b16b5a9a0f5ff8dcbe7170c12fca839';
+const tmdbImageUrl = 'https://image.tmdb.org/t/p/w500';
+
 async function getData() {
 	const browser = await puppeteer.launch();
 
@@ -46,14 +49,12 @@ async function getData() {
 	});
 
 	//Get more data about each film
-	const tmdbApiKey = '4b16b5a9a0f5ff8dcbe7170c12fca839';
-	for (let i = 0; i < 3; i++) {
+	for (let i = 0; i < listResult-length; i++) {
 		const film = listResult[i];
 
 		//Search tmdb
 		if (film.title && film.hungarianTitle) {
 			const year = new Date(film.releaseDate).getFullYear();
-			const tmdbImageUrl = 'https://image.tmdb.org/t/p/w500';
 			const ogTitleSearchUrl =
 				'https://api.themoviedb.org/3/search/movie?api_key=' +
 				tmdbApiKey +
@@ -92,8 +93,12 @@ async function getData() {
 				});
 
 			const matches = ogIdResults.filter(value => hunIdResults.includes(value));
-			if (mathes.length == 1) {
-				film.tmdbId = mathes[0];
+			if (matches) {
+				film.tmdbId = matches[0];
+			} else if (ogIdResults) {
+				film.tmdbId = ogIdResults[0];
+			} else if (hunIdResults) {
+				film.tmdbId = hunIdResults[0];
 			}
 		}
 
@@ -112,6 +117,7 @@ async function getData() {
 					film.description = tmdbDetails.overview;
 					film.image = tmdbImageUrl + tmdbDetails.poster_path;
 					film.runtime = MinutesToDuration(tmdbDetails.runtime);
+					film.releaseDate = new Date(tmdbDetails.release_date).toISOString();
 					film.imdbId = tmdbDetails.imdb_id;
 					film.genres = tmdbDetails.genres.map(genre => {
 						return genre.name;
@@ -124,14 +130,11 @@ async function getData() {
 					if (directorObject) {
 						film.director = directorObject.name;
 					}
-					//TODO: fix relese dates, get hungarian release date properly
-					const releaseDateObject = tmdbDetails.release_dates.results.find(
-						function(releaseDate) {
-							return releaseDate.iso_3166_1 == 'HU';
-						}
-					);
-					if (releaseDateObject) {
-						film.releaseDate = releaseDateObject.release_dates[0].release_date;
+					const hunReleaseDateObject  = tmdbDetails.release_dates.results.find(function(releaseDate) {
+						return releaseDate.iso_3166_1 === 'HU';
+					});
+					if (hunReleaseDateObject) {
+						film.hungarianReleaseDate = releaseDateObject.release_dates[0].release_date;
 					}
 					console.log('Got tmdb movie details response for ' + film.title);
 				})
@@ -173,7 +176,6 @@ async function getData() {
 			film.estId +
 			'/varos=298/dt=' +
 			todayString;
-		console.log(screeningUrl);
 		await filmpage.goto(screeningUrl);
 		const screeningResult = await filmpage.evaluate(() => {
 			let res = [];
@@ -195,20 +197,21 @@ async function getData() {
 					let showtimeDate = new Date();
 					showtimeDate.setHours(hours);
 					showtimeDate.setMinutes(minutes);
+					showtimeDate.setSeconds(0,0);
 					showtime.time = showtimeDate.toISOString();
 
 					let dubString = cellText.substring(
 						cellText.indexOf('(') + 1,
 						cellText.length - 1
 					);
-					if ((dubString = 'mb')) {
+					if ((dubString === 'mb')) {
 						showtime.dubbed = true;
 						showtime.subtitled = false;
-					} else if ((dubString = 'f')) {
+					} else if ((dubString === 'f')) {
 						showtime.dubbed = false;
 						showtime.subtitled = true;
 						showtime.subtitleLanguage = 'hungarian';
-					} else if ((dubString = 'ensub')) {
+					} else if ((dubString === 'ensub')) {
 						showtime.dubbed = false;
 						showtime.subtitled = true;
 						showtime.subtitleLanguage = 'english';
