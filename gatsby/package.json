@@ -9,13 +9,16 @@
   },
   "dependencies": {
     "axios": "^0.18.0",
+    "babel-plugin-styled-components": "^1.10.0",
     "fs": "0.0.1-security",
     "gatsby": "^2.0.0",
+    "gatsby-plugin-styled-components": "^3.0.7",
     "iconv": "^2.3.4",
     "puppeteer": "^1.14.0",
     "react": "^16.5.1",
     "react-dom": "^16.5.1",
     "request": "^2.88.0",
+    "styled-components": "^4.2.0",
     "utf8": "^3.0.0"
   },
   "version": "1.0.0",

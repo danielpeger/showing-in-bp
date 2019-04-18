@@ -158,7 +158,6 @@ async function getData() {
 						omdbResponse.data.imdbVotes.replace(/,/g, '')
 					);
 					film.metascore = parseInt(omdbResponse.data.Metascore) / 100;
-					film.aggregatedRating = (film.imdbRating + film.metascore) / 2;
 					film.description = omdbResponse.data.Plot;
 					film.writer = omdbResponse.data.Writer;
 					console.log('Got omdb response for ' + film.title);
@@ -237,6 +236,15 @@ async function getData() {
 	}
 
 	browser.close();
+
+	for (let i = 0; i < listResult.length; i++) {
+		const film = listResult[i];
+		if (film.imdbRating && film.metascore) {
+			film.aggregatedRating = (film.imdbRating + film.metascore) / 2;
+		} else {
+			film.aggregatedRating = 0;
+		}
+	};
 
 	// Sort by rating
 	const filmsSorted = listResult.sort(function(a, b) {
