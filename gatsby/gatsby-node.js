@@ -15,8 +15,7 @@ async function getData() {
 		let res = [];
 		const egyseg = document.querySelectorAll('.egyseg');
 		const itemLimit = 20;
-		//		for (let i = 0; i < egyseg.length; i++) {
-		for (let i = 0; i < itemLimit; i++) {
+		for (let i = 0; i < egyseg.length; i++) {
 			let film = {};
 			let titleAndYear = egyseg[i].querySelector('small').textContent;
 			let link = egyseg[i].querySelector(':scope > a');
@@ -171,9 +170,8 @@ async function getData() {
 
 		//Get screenings
 		const filmpage = await browser.newPage();
-		const d = new Date();
 		var options = { year: 'numeric', month: '2-digit', day: '2-digit' };
-		const todayString = d
+		const todayString = new Date()
 			.toLocaleDateString('hu-HU', options)
 			.replace(new RegExp('-', 'g'), '.');
 		const screeningUrl =
@@ -239,6 +237,7 @@ async function getData() {
 
 	browser.close();
 
+	//Add aggregate rating
 	for (let i = 0; i < listResult.length; i++) {
 		const ratings = [listResult[i].imdbRating, listResult[i].metascore];
 		listResult[i].aggregatedRating = ratings
