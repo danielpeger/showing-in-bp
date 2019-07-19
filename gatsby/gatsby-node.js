@@ -14,7 +14,9 @@ async function getData() {
 	const listResult = await page.evaluate(() => {
 		let res = [];
 		const egyseg = document.querySelectorAll('.egyseg');
-		for (let i = 0; i < egyseg.length; i++) {
+		const itemLimit = 20;
+		//		for (let i = 0; i < egyseg.length; i++) {
+		for (let i = 0; i < itemLimit; i++) {
 			let film = {};
 			let titleAndYear = egyseg[i].querySelector('small').textContent;
 			let link = egyseg[i].querySelector(':scope > a');
@@ -238,13 +240,18 @@ async function getData() {
 	browser.close();
 
 	for (let i = 0; i < listResult.length; i++) {
-		const film = listResult[i];
-		if (film.imdbRating && film.metascore) {
-			film.aggregatedRating = (film.imdbRating + film.metascore) / 2;
-		} else {
-			film.aggregatedRating = 0;
-		}
-	};
+		const ratings = [listResult[i].imdbRating, listResult[i].metascore];
+		listResult[i].aggregatedRating = ratings
+			.filter(x => x)
+			.reduce((total, amount, index, array) => {
+				total += amount;
+				if (index === array.length - 1) {
+					return total / array.length;
+				} else {
+					return total;
+				}
+			}, 0);
+	}
 
 	// Sort by rating
 	const filmsSorted = listResult.sort(function(a, b) {
