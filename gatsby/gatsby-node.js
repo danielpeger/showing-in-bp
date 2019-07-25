@@ -1,11 +1,11 @@
 const MinutesToDuration = require('./utils.js').MinutesToDuration;
 const getFilms = require('./src/data/getFilms').getFilms;
-
-
+const getTmdbData = require('./src/data/getTmdbData').getTmdbData;
 
 async function log(){
 	const films = await getFilms(10);
-	console.log(films);
+	const year = new Date(films[1].releaseDate).getFullYear();
+	console.log(await getTmdbData(films[1]));
 }
 
 log();
